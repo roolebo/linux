@@ -677,6 +677,18 @@ void qla24xx_do_nack_work(struct scsi_qla_host *vha, struct qla_work_evt *e)
 	switch (e->u.nack.type) {
 	case SRB_NACK_PRLI:
 		t = e->u.nack.fcport;
+		ql_dbg(ql_dbg_tgt, vha, 0xd020, "del_work: %p\n", &t->del_work);
+		ql_dbg(ql_dbg_tgt, vha, 0xd021,
+                    "del_work func: %p\n", t->del_work.func);
+		ql_dbg(ql_dbg_tgt, vha, 0xd022,
+                    "qla24xx_delete_sess_fn: %p\n",
+                    qla24xx_delete_sess_fn);
+		ql_dbg(ql_dbg_tgt, vha, 0xd023, "free_work: %p\n", &t->free_work);
+		ql_dbg(ql_dbg_tgt, vha, 0xd024,
+                    "free_work func: %p\n", t->free_work.func);
+		ql_dbg(ql_dbg_tgt, vha, 0xd025,
+                    "qlt_free_session_done: %p\n",
+                    qlt_free_session_done);
 		flush_work(&t->del_work);
 		flush_work(&t->free_work);
 		mutex_lock(&vha->vha_tgt.tgt_mutex);
@@ -1267,7 +1279,6 @@ void qlt_schedule_sess_for_deletion(struct fc_port *sess)
 	    "Scheduling sess %p for deletion %8phC\n",
 	    sess, sess->port_name);
 
-	INIT_WORK(&sess->del_work, qla24xx_delete_sess_fn);
 	WARN_ON(!queue_work(sess->vha->hw->wq, &sess->del_work));
 }
 
