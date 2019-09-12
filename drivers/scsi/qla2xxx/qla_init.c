@@ -1434,26 +1434,10 @@ static void qla_chk_n2n_b4_login(struct scsi_qla_host *vha, fc_port_t *fcport)
 	u8 login = 0;
 	int rc;
 
-	if (qla_tgt_mode_enabled(vha))
-		return;
-
-	if (qla_dual_mode_enabled(vha)) {
-		if (N2N_TOPO(vha->hw)) {
-			u64 mywwn, wwn;
-
-			mywwn = wwn_to_u64(vha->port_name);
-			wwn = wwn_to_u64(fcport->port_name);
-			if (mywwn > wwn)
-				login = 1;
-			else if ((fcport->fw_login_state == DSC_LS_PLOGI_COMP)
-			    && time_after_eq(jiffies,
-				    fcport->plogi_nack_done_deadline))
-				login = 1;
-		} else {
+	if (N2N_TOPO(vha->hw)) {
+		if (fcport_is_smaller(fcport))
 			login = 1;
-		}
 	} else {
-		/* initiator mode */
 		login = 1;
 	}
 
