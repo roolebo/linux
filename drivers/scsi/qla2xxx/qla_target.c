@@ -1800,7 +1800,7 @@ static int qlt_build_abts_resp_iocb(struct qla_tgt_mgmt_cmd *mcmd)
  */
 static void qlt_24xx_send_abts_resp(struct qla_qpair *qpair,
 	struct abts_recv_from_24xx *abts, uint32_t status,
-	bool ids_reversed)
+	bool ids_reversed, bool term_exchange)
 {
 	struct scsi_qla_host *vha = qpair->vha;
 	struct qla_hw_data *ha = vha->hw;
@@ -1825,6 +1825,10 @@ static void qlt_24xx_send_abts_resp(struct qla_qpair *qpair,
 	resp->handle = QLA_TGT_SKIP_HANDLE;
 	resp->entry_count = 1;
 	resp->nport_handle = abts->nport_handle;
+	if (term_exchange)
+		resp->control_flags = cpu_to_le16(ABTS_CONTR_FLG_TERM_EXCHG);
+	else
+		resp->control_flags = 0;
 	resp->vp_index = vha->vp_idx;
 	resp->sof_type = abts->sof_type;
 	resp->exchange_address = abts->exchange_address;
@@ -1940,7 +1944,7 @@ static void qlt_24xx_retry_term_exchange(struct scsi_qla_host *vha,
 		qlt_build_abts_resp_iocb(mcmd);
 	else
 		qlt_24xx_send_abts_resp(qpair,
-		    (struct abts_recv_from_24xx *)entry, FCP_TMF_CMPL, true);
+		    (struct abts_recv_from_24xx *)entry, FCP_TMF_CMPL, true, false);
 
 }
 
@@ -2134,7 +2138,7 @@ static void qlt_24xx_handle_abts(struct scsi_qla_host *vha,
 		    "qla_target(%d): ABTS: Abort Sequence not "
 		    "supported\n", vha->vp_idx);
 		qlt_24xx_send_abts_resp(ha->base_qpair, abts, FCP_TMF_REJECTED,
-		    false);
+		    false, false);
 		return;
 	}
 
@@ -2143,7 +2147,7 @@ static void qlt_24xx_handle_abts(struct scsi_qla_host *vha,
 		    "qla_target(%d): ABTS: Unknown Exchange "
 		    "Address received\n", vha->vp_idx);
 		qlt_24xx_send_abts_resp(ha->base_qpair, abts, FCP_TMF_REJECTED,
-		    false);
+		    false, false);
 		return;
 	}
 
@@ -2163,8 +2167,16 @@ static void qlt_24xx_handle_abts(struct scsi_qla_host *vha,
 		    vha->vp_idx);
 		spin_unlock_irqrestore(&ha->tgt.sess_lock, flags);
 
+		/*
+		 * According to FCP-4 12.3.3,
+		 * ABTS-LS frame shall be discarded
+		 */
 		qlt_24xx_send_abts_resp(ha->base_qpair, abts, FCP_TMF_REJECTED,
-			    false);
+			    false, true);
+		spin_unlock_irqrestore(&ha->hardware_lock, flags);
+		/* and LOGO ELS transmitted */
+		qla24xx_els_dcmd_iocb(vha, ELS_DCMD_LOGO, be_to_port_id(s_id), false);
+		spin_lock_irqsave(&ha->hardware_lock, flags);
 		return;
 	}
 	spin_unlock_irqrestore(&ha->tgt.sess_lock, flags);
@@ -2172,7 +2184,7 @@ static void qlt_24xx_handle_abts(struct scsi_qla_host *vha,
 
 	if (sess->deleted) {
 		qlt_24xx_send_abts_resp(ha->base_qpair, abts, FCP_TMF_REJECTED,
-		    false);
+		    false, false);
 		return;
 	}
 
@@ -2182,7 +2194,7 @@ static void qlt_24xx_handle_abts(struct scsi_qla_host *vha,
 		    "qla_target(%d): __qlt_24xx_handle_abts() failed: %d\n",
 		    vha->vp_idx, rc);
 		qlt_24xx_send_abts_resp(ha->base_qpair, abts, FCP_TMF_REJECTED,
-		    false);
+		    false, false);
 		return;
 	}
 }
@@ -6213,7 +6225,7 @@ out_term2:
 out_term:
 	spin_lock_irqsave(&ha->hardware_lock, flags);
 	qlt_24xx_send_abts_resp(ha->base_qpair, &prm->abts,
-	    FCP_TMF_REJECTED, false);
+	    FCP_TMF_REJECTED, false, false);
 	spin_unlock_irqrestore(&ha->hardware_lock, flags);
 }
 
