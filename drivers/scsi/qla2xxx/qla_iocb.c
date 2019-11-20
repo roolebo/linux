@@ -2562,7 +2562,7 @@ static void qla2x00_els_dcmd_sp_done(srb_t *sp, int res)
 
 int
 qla24xx_els_dcmd_iocb(scsi_qla_host_t *vha, int els_opcode,
-    port_id_t remote_did)
+    port_id_t remote_did, bool wait)
 {
 	srb_t *sp;
 	fc_port_t *fcport = NULL;
@@ -2601,6 +2601,8 @@ qla24xx_els_dcmd_iocb(scsi_qla_host_t *vha, int els_opcode,
 	elsio->timeout = qla2x00_els_dcmd_iocb_timeout;
 	qla2x00_init_timer(sp, ELS_DCMD_TIMEOUT);
 	init_completion(&sp->u.iocb_cmd.u.els_logo.comp);
+	if (wait)
+		sp->flags = SRB_WAKEUP_ON_COMP;
 	sp->done = qla2x00_els_dcmd_sp_done;
 	sp->free = qla2x00_els_dcmd_sp_free;
 
@@ -2637,9 +2639,14 @@ qla24xx_els_dcmd_iocb(scsi_qla_host_t *vha, int els_opcode,
 	    sp->name, sp->handle, fcport->loop_id, fcport->d_id.b.domain,
 	    fcport->d_id.b.area, fcport->d_id.b.al_pa);
 
-	wait_for_completion(&elsio->u.els_logo.comp);
+	if (wait) {
+		wait_for_completion(&elsio->u.els_logo.comp);
+	} else {
+		goto done;
+	}
 
 	sp->free(sp);
+done:
 	return rval;
 }
 
