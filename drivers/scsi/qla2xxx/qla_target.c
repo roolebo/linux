@@ -932,7 +932,7 @@ qlt_send_first_logo(struct scsi_qla_host *vha, qlt_port_logo_t *logo)
 
 	mutex_unlock(&vha->vha_tgt.tgt_mutex);
 
-	res = qla24xx_els_dcmd_iocb(vha, ELS_DCMD_LOGO, logo->id);
+	res = qla24xx_els_dcmd_iocb(vha, ELS_DCMD_LOGO, logo->id, true);
 
 	mutex_lock(&vha->vha_tgt.tgt_mutex);
 	list_del(&logo->list);
