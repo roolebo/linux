@@ -651,3 +651,32 @@ void core_tpg_remove_lun(
 
 	percpu_ref_exit(&lun->lun_ref);
 }
+
+static ssize_t core_tpg_rtpi_show(struct config_item *item, char *page)
+{
+	struct se_portal_group *se_tpg = attrib_to_tpg(item);
+	return sprintf(page, "%d\n", se_tpg->tpg_rtpi);
+}
+
+static ssize_t core_tpg_rtpi_store(struct config_item *item,
+		const char *page, size_t count)
+{
+	struct se_portal_group *se_tpg = attrib_to_tpg(item);
+	u16 val;
+	int ret = kstrtou16(page, 0, &val);
+
+	if (ret)
+		return ret;
+	if (val == 0)
+		return -EINVAL;
+	se_tpg->tpg_rtpi = val;
+
+	return count;
+}
+
+CONFIGFS_ATTR(core_tpg_, rtpi);
+
+struct configfs_attribute *core_tpg_attrib_attrs[] = {
+	&core_tpg_attr_rtpi,
+	NULL,
+};
