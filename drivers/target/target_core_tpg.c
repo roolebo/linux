@@ -31,6 +31,7 @@
 #include "target_core_ua.h"
 
 extern struct se_device *g_lun0_dev;
+atomic_t core_tpg_next_rtpi = ATOMIC_INIT(0);
 
 /*	__core_tpg_get_initiator_node_acl():
  *
@@ -469,6 +470,19 @@ int core_tpg_register(
 
 	INIT_HLIST_HEAD(&se_tpg->tpg_lun_hlist);
 	se_tpg->proto_id = proto_id;
+        /*
+	 * Allocate the next RELATIVE TARGET PORT IDENTIFIER.
+	 * Here is the table from SPC-4 4.3.4:
+	 *
+	 *    Table 34 -- Relative target port identifier values
+	 *
+	 * Value		Description
+	 * 0h			Reserved
+	 * 1h			Relative port 1, historically known as port A
+	 * 2h			Relative port 2, historically known as port B
+	 * 3h to FFFFh		Relative port 3 through 65 535
+	 */
+	se_tpg->tpg_rtpi = atomic_inc_return(&core_tpg_next_rtpi);
 	se_tpg->se_tpg_wwn = se_wwn;
 	atomic_set(&se_tpg->tpg_pr_ref_count, 0);
 	INIT_LIST_HEAD(&se_tpg->acl_node_list);
