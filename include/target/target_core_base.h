@@ -719,7 +719,6 @@ struct se_lun {
 	u32			lun_index;
 
 	/* RELATIVE TARGET PORT IDENTIFER */
-	u16			lun_rtpi;
 	atomic_t		lun_acl_count;
 	struct se_device __rcu	*lun_se_dev;
 
