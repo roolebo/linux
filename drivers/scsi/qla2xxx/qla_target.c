@@ -62,6 +62,13 @@ MODULE_PARM_DESC(ql2xuctrlirq,
     "Valid with qlini_mode=disabled."
     "1(default): enable");
 
+static int ql2xtgt_unordered = 0;
+module_param(ql2xtgt_unordered, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(ql2xtgt_unordered,
+	"Process commands of any LUN on all queue pairs."
+	"Valid only for devices that don't need command ordering (e.g. SBC)"
+	"0(default): disable");
+
 int ql2x_ini_mode = QLA2XXX_INI_MODE_EXCLUSIVE;
 
 static int qla_sam_status = SAM_STAT_BUSY;
@@ -4209,6 +4216,19 @@ static void qlt_assign_qpair(struct scsi_qla_host *vha,
 	struct qla_qpair_hint *h;
 
 	if (vha->flags.qpairs_available) {
+		if (ql2xtgt_unordered) {
+			u16 ox_id;
+			u64 qp_index;
+			struct qla_hw_data *ha = vha->hw;
+
+			ox_id = be16_to_cpu(cmd->atio.u.isp24.fcp_hdr.ox_id);
+			qp_index = ox_id % ha->tgt.num_act_qpairs;
+			qp = ha->queue_pair_map[qp_index];
+			h = qla_qpair_to_hint(tgt, qp);
+			BUG_ON(!h);
+			goto out;
+		}
+
 		h = btree_lookup64(&tgt->lun_qpair_map, cmd->unpacked_lun);
 		if (unlikely(!h)) {
 			/* spread lun to qpair ratio evently */
