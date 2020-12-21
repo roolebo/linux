@@ -500,8 +500,9 @@ qla_dfs_naqp_write(struct file *file, const char __user *buffer,
 
 	num_act_qp = simple_strtoul(buf, NULL, 0);
 
-	if (num_act_qp >= vha->hw->max_qpairs) {
-		pr_err("User set invalid number of qpairs %lu. Max = %d",
+	if (num_act_qp < 1 || num_act_qp > vha->hw->max_qpairs) {
+		pr_err("User set invalid number of qpairs %lu. "
+		       "Min = 1, Max = %d",
 		    num_act_qp, vha->hw->max_qpairs);
 		rc = -EINVAL;
 		goto out_free;
