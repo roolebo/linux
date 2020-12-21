@@ -6620,6 +6620,9 @@ qlt_enable_vha(struct scsi_qla_host *vha)
 	if (vha->qlini_mode == QLA2XXX_INI_MODE_ENABLED)
 		return;
 
+	if (!ha->tgt.num_act_qpairs)
+		ha->tgt.num_act_qpairs = min_t(uint8_t, ha->max_qpairs,
+					       DEFAULT_NAQP);
 	if (ha->tgt.num_act_qpairs > ha->max_qpairs)
 		ha->tgt.num_act_qpairs = ha->max_qpairs;
 	spin_lock_irqsave(&ha->hardware_lock, flags);
