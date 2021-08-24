@@ -3757,6 +3757,7 @@ void qla24xx_process_response_queue(struct scsi_qla_host *vha,
 	struct qla_hw_data *ha = vha->hw;
 	struct purex_entry_24xx *purex_entry;
 	struct purex_item *pure_item;
+	u32 rsp_q_in;
 
 	if (!ha->flags.fw_started)
 		return;
@@ -3766,7 +3767,10 @@ void qla24xx_process_response_queue(struct scsi_qla_host *vha,
 		qla_cpu_update(rsp->qpair, smp_processor_id());
 	}
 
-	while (rsp->ring_ptr->signature != RESPONSE_PROCESSED) {
+	rsp_q_in = rsp->qpair->use_shadow_reg ? *rsp->in_ptr :
+		rd_reg_dword(rsp->rsp_q_in);
+
+	while (rsp->ring_index != rsp_q_in) {
 		pkt = (struct sts_entry_24xx *)rsp->ring_ptr;
 
 		rsp->ring_index++;
